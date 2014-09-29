@@ -112,6 +112,7 @@ import Data.Maybe (fromMaybe)
 import Control.Monad (liftM, unless)
 import Control.Applicative ((<$>), (<*>))
 import Control.Exception
+import System.IO.Unsafe (unsafePerformIO)
 
 {# context prefix = "MPI" #}
 
@@ -249,11 +250,10 @@ discard _ = return ()
 getProcessorName :: IO String
 getProcessorName = do
   allocaBytes (fromIntegral maxProcessorName) $ \ptr -> do
-    len <- getProcessorName' ptr
+    len <- getProcessorName_ ptr
     peekCStringLen (ptr, cIntConv len)
   where
-    getProcessorName' = {# fun unsafe Get_processor_name as getProcessorName_
-                           {id `Ptr CChar', alloca- `CInt' peekIntConv*} -> `()' checkError*- #}
+    {# fun unsafe Get_processor_name as getProcessorName_ {id `Ptr CChar', alloca- `CInt' peekIntConv*} -> `()' checkError*- #}
 
 -- | MPI implementation version
 data Version =
@@ -266,11 +266,11 @@ instance Show Version where
 -- | Which MPI version the code is running on.
 getVersion :: IO Version
 getVersion = do
-   (version, subversion) <- getVersion'
+   (version, subversion) <- getVersion_
    return $ Version version subversion
   where
-    getVersion' = {# fun unsafe Get_version as getVersion_
-                     {alloca- `Int' peekIntConv*, alloca- `Int' peekIntConv*} -> `()' checkError*- #}
+    {# fun unsafe Get_version as getVersion_
+      {alloca- `Int' peekIntConv*, alloca- `Int' peekIntConv*} -> `()' checkError*- #}
 
 -- | Supported MPI implementations
 data Implementation = MPICH2 | OpenMPI deriving (Eq,Show)
@@ -313,14 +313,14 @@ commGetAttr comm key = do
   isInitialized <- initialized
   if isInitialized then do
     alloca $ \ptr -> do
-      found <- commGetAttr' comm key (castPtr ptr)
+      found <- commGetAttr_ comm key (castPtr ptr)
       if found then do ptr2 <- peek ptr
                        Just <$> peek ptr2
                else return Nothing
     else return Nothing
       where
-        commGetAttr' = {# fun unsafe Comm_get_attr as commGetAttr_
-                         {fromComm `Comm', cIntConv `Int', id `Ptr ()', alloca- `Bool' peekBool*} -> `()' checkError*- #}
+        {# fun unsafe Comm_get_attr as commGetAttr_
+          {fromComm `Comm', cIntConv `Int', id `Ptr ()', alloca- `Bool' peekBool*} -> `()' checkError*- #}
 
 -- | Maximum tag value supported by the current MPI implementation. Corresponds to the value of standard MPI
 --   attribute @MPI_TAG_UB@.
@@ -418,10 +418,10 @@ getCount :: Comm -> Rank -> Tag -> Datatype -> IO Int
 getCount comm rank tag datatype =
   alloca $ \statusPtr -> do
     probe rank tag comm statusPtr
-    cnt <- getCount' statusPtr datatype
+    cnt <- getCount_ statusPtr datatype
     return $ fromIntegral cnt
   where
-    getCount' = {# fun unsafe Get_count as getCount_
+    {# fun unsafe Get_count as getCount_
            {castPtr `Ptr Status', fromDatatype `Datatype', alloca- `CInt' peekIntConv*} -> `()' checkError*- #}
 
 
@@ -523,14 +523,14 @@ test request = withRequest request testPtr
 -- set to point to @requestNull@.
 testPtr :: Ptr Request -> IO (Maybe Status)
 testPtr reqPtr = do
-  (flag, status) <- testPtr' reqPtr
+  (flag, status) <- testPtr_ reqPtr
   request' <- peek reqPtr
   if flag
     then do if request' == requestNull
                then return $ Just status
                else error "testPtr: request modified, but not set to MPI_REQUEST_NULL!"
     else return Nothing
-  where testPtr' = {# fun unsafe Test as testPtr_
+  where {# fun unsafe Test as testPtr_
        {castPtr `Ptr Request', alloca- `Bool' peekBool*, allocaCast- `Status' peekCast*} -> `()' checkError*- #}
 
 -- | Cancel a pending communication request.
@@ -740,42 +740,42 @@ every millisecond, the value returned by @wtick@ should be 10^(-3).
 
 -- | Returns the rank of the calling process in the given group. This function corresponds to @MPI_Group_rank@.
 groupRank :: Group -> Rank
-groupRank = unsafePerformIO <$> groupRank'
-  where groupRank' = {# fun unsafe Group_rank as groupRank_
+groupRank = unsafePerformIO <$> groupRank_
+  where {# fun unsafe Group_rank as groupRank_
                         {fromGroup `Group', alloca- `Rank' peekIntConv*} -> `()' checkError*- #}
 
 -- | Returns the size of a group. This function corresponds to @MPI_Group_size@.
 groupSize :: Group -> Int
-groupSize = unsafePerformIO <$> groupSize'
-  where groupSize' = {# fun unsafe Group_size as groupSize_
+groupSize = unsafePerformIO <$> groupSize_
+  where {# fun unsafe Group_size as groupSize_
                         {fromGroup `Group', alloca- `Int' peekIntConv*} -> `()' checkError*- #}
 
 -- | Constructs the union of two groups: all the members of the first group, followed by all the members of the 
 -- second group that do not appear in the first group. This function corresponds to @MPI_Group_union@.
 groupUnion :: Group -> Group -> Group
-groupUnion g1 g2 = unsafePerformIO $ groupUnion' g1 g2
-  where groupUnion' = {# fun unsafe Group_union as groupUnion_
+groupUnion g1 g2 = unsafePerformIO $ groupUnion_ g1 g2
+  where {# fun unsafe Group_union as groupUnion_
                          {fromGroup `Group', fromGroup `Group', alloca- `Group' peekGroup*} -> `()' checkError*- #}
 
 -- | Constructs a new group which is the intersection of two groups. This function corresponds to @MPI_Group_intersection@.
 groupIntersection :: Group -> Group -> Group
-groupIntersection g1 g2 = unsafePerformIO $ groupIntersection' g1 g2
-  where groupIntersection' = {# fun unsafe Group_intersection as groupIntersection_
+groupIntersection g1 g2 = unsafePerformIO $ groupIntersection_ g1 g2
+  where {# fun unsafe Group_intersection as groupIntersection_
                                 {fromGroup `Group', fromGroup `Group', alloca- `Group' peekGroup*} -> `()' checkError*- #}
 
 -- | Constructs a new group which contains all the elements of the first group which are not in the second group. 
 -- This function corresponds to @MPI_Group_difference@.
 groupDifference :: Group -> Group -> Group
-groupDifference g1 g2 = unsafePerformIO $ groupDifference' g1 g2
-  where groupDifference' = {# fun unsafe Group_difference as groupDifference_
+groupDifference g1 g2 = unsafePerformIO $ groupDifference_ g1 g2
+  where {# fun unsafe Group_difference as groupDifference_
                               {fromGroup `Group', fromGroup `Group', alloca- `Group' peekGroup*} -> `()' checkError*- #}
 
 -- | Compares two groups. Returns 'MPI_IDENT' if the order and members of the two groups are the same,
 -- 'MPI_SIMILAR' if only the members are the same, and 'MPI_UNEQUAL' otherwise.
 groupCompare :: Group -> Group -> ComparisonResult
-groupCompare g1 g2 = unsafePerformIO $ groupCompare' g1 g2
+groupCompare g1 g2 = unsafePerformIO $ groupCompare_ g1 g2
   where
-    groupCompare' = {# fun unsafe Group_compare as groupCompare_
+    {# fun unsafe Group_compare as groupCompare_
                        {fromGroup `Group', fromGroup `Group', alloca- `ComparisonResult' peekEnum*} -> `()' checkError*- #}
 
 -- Technically it might make better sense to make the second argument a Set rather than a list
@@ -811,10 +811,10 @@ groupTranslateRanks group1 ranks group2 =
       let (rankIntList :: [Int]) = map fromEnum ranks
       withArrayLen rankIntList $ \size ranksPtr ->
          allocaArray size $ \resultPtr -> do
-            groupTranslateRanks' group1 (cFromEnum size) (castPtr ranksPtr) group2 resultPtr
+            groupTranslateRanks_ group1 (cFromEnum size) (castPtr ranksPtr) group2 resultPtr
             map toRank <$> peekArray size resultPtr
   where
-    groupTranslateRanks' = {# fun unsafe Group_translate_ranks as groupTranslateRanks_
+    {# fun unsafe Group_translate_ranks as groupTranslateRanks_
                               {fromGroup `Group', id `CInt', id `Ptr CInt', fromGroup `Group', id `Ptr CInt'} -> `()' checkError*- #}
 
 withRanksAsInts ranks f = withArrayLen (map fromEnum ranks) $ \size ptr -> f (cIntConv size, castPtr ptr)
@@ -860,10 +860,10 @@ for more details on client/server programming with MPI. -}
 openPort :: Info -> IO String
 openPort info = do
   allocaBytes (fromIntegral maxPortName) $ \ptr -> do
-    openPort' info ptr
+    openPort_ info ptr
     peekCStringLen (ptr, fromIntegral maxPortName)
   where
-    openPort' = {# fun unsafe Open_port as openPort_
+    {# fun unsafe Open_port as openPort_
                    {fromInfo `Info', id `Ptr CChar'} -> `()' checkError*- #}
 
 -- | Closes the specified port on the server.
@@ -903,11 +903,10 @@ mpiUndefined = unsafePerformIO $ peekIntConv mpiUndefined_
 
 -- | Return the number of bytes used to store an MPI @Datatype@.
 typeSize :: Datatype -> Int
-typeSize = unsafePerformIO . typeSize'
+typeSize = unsafePerformIO . typeSize_
   where
-    typeSize' =
-      {# fun unsafe Type_size as typeSize_
-         {fromDatatype `Datatype', alloca- `Int' peekIntConv*} -> `()' checkError*- #}
+    {# fun unsafe Type_size as typeSize_
+       {fromDatatype `Datatype', alloca- `Int' peekIntConv*} -> `()' checkError*- #}
 
 {# fun unsafe Error_class as ^
                 { id `CInt', alloca- `CInt' peek*} -> `CInt' id #}
@@ -929,7 +928,7 @@ typeSize = unsafePerformIO . typeSize'
 -- This function corresponds to @MPI_Abort@.
 abort :: Comm -> Int -> IO ()
 abort comm code =
-   abort' comm (toErrorCode code)
+   abort_ comm (toErrorCode code)
    where
    toErrorCode :: Int -> CInt
    toErrorCode i
@@ -938,7 +937,7 @@ abort comm code =
       | i > (fromIntegral (maxBound :: CInt)) = maxBound
       | otherwise = cIntConv i
 
-   abort' = {# fun unsafe Abort as abort_ {fromComm `Comm', id `CInt'} -> `()' checkError*- #}
+   {# fun unsafe Abort as abort_ {fromComm `Comm', id `CInt'} -> `()' checkError*- #}
 
 
 type MPIDatatype = {# type MPI_Datatype #}
@@ -1123,20 +1122,20 @@ infoNull = unsafePerformIO $ peekInfo infoNull_
 {-| Gets the specified key -}
 infoGet :: Info -> String -> IO (Maybe String)
 infoGet info key = do
-  (len, found) <- infoGetValuelen' info key 
+  (len, found) <- infoGetValuelen_ info key
   -- len+1 is required to allow for the terminating \NULL
   if found/=0 then allocaBytes (fromIntegral len + 1)
                    (\bufferPtr -> do
-                       found <- infoGet' info key (len+1) bufferPtr
+                       found <- infoGet_ info key (len+1) bufferPtr
                        if found/=0 then Just <$> peekCStringLen (bufferPtr, fromIntegral len)
                                    else return Nothing)
            else return Nothing
+  where
+    {# fun unsafe Info_get_valuelen as infoGetValuelen_
+           {fromInfo `Info', `String', alloca- `CInt' peek*, alloca- `CInt' peek* } -> `()' checkError*- #}
 
-infoGetValuelen' = {# fun unsafe Info_get_valuelen as infoGetValuelen_
-       {fromInfo `Info', `String', alloca- `CInt' peek*, alloca- `CInt' peek* } -> `()' checkError*- #}
-
-infoGet' = {# fun unsafe Info_get as infoGet_
-            {fromInfo `Info', `String', id `CInt', castPtr `Ptr CChar', alloca- `CInt' peek*} -> `()' checkError*- #}
+    {# fun unsafe Info_get as infoGet_
+                {fromInfo `Info', `String', id `CInt', castPtr `Ptr CChar', alloca- `CInt' peek*} -> `()' checkError*- #}
 
 
 {- | Haskell datatype that represents values which

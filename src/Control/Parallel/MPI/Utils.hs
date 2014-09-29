@@ -1,5 +1,7 @@
 module Control.Parallel.MPI.Utils (asBool, asInt, asEnum, debugOut) where
 
+import System.IO.Unsafe (unsafePerformIO)
+
 import C2HS
 
 asBool :: (Ptr CInt -> IO ()) -> IO Bool
