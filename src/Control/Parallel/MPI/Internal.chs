@@ -1160,6 +1160,7 @@ instance Num Rank where
     | x > ( fromIntegral (maxBound :: CInt)) = error "Rank value does not fit into 32 bits"
     | x < 0             = error "Negative Rank value"
     | otherwise         = MkRank (fromIntegral x)
+  negate _ = error "Can't negate a Rank"
 
 foreign import ccall "&mpi_any_source" anySource_ :: Ptr CInt
 foreign import ccall "&mpi_root" theRoot_ :: Ptr CInt
@@ -1272,6 +1273,7 @@ instance Num Tag where
     | fromIntegral x > tagUpperBound = error "Tag value is over the MPI_TAG_UB"
     | x < 0             = error "Negative Tag value"
     | otherwise         = MkTag (fromIntegral x)
+  negate _ = error "Can't negate a Tag"
 
 instance Show Tag where
   show = show . tagVal
