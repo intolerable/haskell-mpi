@@ -41,13 +41,13 @@ module Control.Parallel.MPI.Internal
      Info, infoNull, infoCreate, infoSet, infoDelete, infoGet,
 
      -- * Requests and statuses.
-     Request, Status (..), getCount, test, testPtr, cancel, cancelPtr, wait, waitPtr, waitall, requestNull, 
+     Request, Status (..), getCount, test, testPtr, cancel, cancelPtr, wait, waitPtr, waitall, requestNull,
 
      -- * Process management.
      -- ** Communicators.
      Comm, commWorld, commSelf, commNull, commTestInter,
-     commSize, commRemoteSize, 
-     commRank, 
+     commSize, commRemoteSize,
+     commRank,
      commCompare, commFree, commGroup, commGetAttr,
 
      -- ** Process groups.
@@ -91,7 +91,7 @@ module Control.Parallel.MPI.Internal
      -- ** All-to-all.
      allgather, allgatherv,
      alltoall, alltoallv,
-     allreduce, 
+     allreduce,
      reduceScatterBlock,
      reduceScatter,
      barrier,
@@ -336,7 +336,7 @@ foreign import ccall unsafe "&mpi_tag_ub" tagUB_ :: Ptr CInt
 {- | True if clocks at all processes in
 'commWorld' are synchronized, False otherwise. The expectation is that
 the variation in time, as measured by calls to 'wtime', will be less then one half the
-round-trip time for an MPI message of length zero. 
+round-trip time for an MPI message of length zero.
 
 Communicators other than 'commWorld' could have different clocks.
 You could find it out by querying attribute 'wtimeIsGlobalKey' with 'commGetAttr'.
@@ -354,7 +354,7 @@ foreign import ccall unsafe "&mpi_wtime_is_global" wtimeIsGlobal_ :: Ptr CInt
 wtimeIsGlobalKey :: Int
 wtimeIsGlobalKey = unsafePerformIO (peekIntConv wtimeIsGlobal_)
 
-{- | 
+{- |
 Many ``dynamic'' MPI applications are expected to exist in a static runtime environment, in which resources have been allocated before the application is run. When a user (or possibly a batch system) runs one of these quasi-static applications, she will usually specify a number of processes to start and a total number of processes that are expected. An application simply needs to know how many slots there are, i.e., how many processes it should spawn.
 
 This attribute indicates the total number of processes that are expected.
@@ -432,7 +432,7 @@ getCount comm rank tag datatype =
 {# fun unsafe Send as ^
           { id `BufferPtr', id `Count', fromDatatype `Datatype', fromRank `Rank', fromTag `Tag', fromComm `Comm' } -> `()' checkError*- #}
 {-| Variant of 'send' that would terminate only when receiving side
-actually starts receiving data. 
+actually starts receiving data.
 -}
 {# fun unsafe Ssend as ^
           { id `BufferPtr', id `Count', fromDatatype `Datatype', fromRank `Rank', fromTag `Tag', fromComm `Comm' } -> `()' checkError*- #}
@@ -448,15 +448,15 @@ started, otherwise this call could terminate with MPI error.
           { id `BufferPtr', id `Count', fromDatatype `Datatype', fromRank `Rank', fromTag `Tag', fromComm `Comm', allocaCast- `Status' peekCast* } -> `()' checkError*- #}
 -- | Send the values (as specified by @BufferPtr@, @Count@, @Datatype@) to
 --   the process specified by (@Comm@, @Rank@, @Tag@) in non-blocking mode.
--- 
+--
 -- Use 'probe' or 'test' to check the status of the operation,
 -- 'cancel' to terminate it or 'wait' to block until it completes.
 -- Operation would be considered complete as soon as MPI finishes
--- copying the data from the send buffer. 
+-- copying the data from the send buffer.
 {# fun unsafe Isend as ^
            { id `BufferPtr', id `Count', fromDatatype `Datatype', fromRank `Rank', fromTag `Tag', fromComm `Comm', alloca- `Request' peekRequest*} -> `()' checkError*- #}
 -- | Variant of the 'isend' that would be considered complete only when
---   receiving side actually starts receiving data. 
+--   receiving side actually starts receiving data.
 {# fun unsafe Issend as ^
            { id `BufferPtr', id `Count', fromDatatype `Datatype', fromRank `Rank', fromTag `Tag', fromComm `Comm', alloca- `Request' peekRequest*} -> `()' checkError*- #}
 -- | Non-blocking variant of 'recv'. Receives data from the process
@@ -519,7 +519,7 @@ wait request = withRequest request waitPtr
 test :: Request -> IO (Maybe Status)
 test request = withRequest request testPtr
 
--- | Analogous to 'test' but uses pointer to @Request@. If request is completed, pointer would be 
+-- | Analogous to 'test' but uses pointer to @Request@. If request is completed, pointer would be
 -- set to point to @requestNull@.
 testPtr :: Ptr Request -> IO (Maybe Status)
 testPtr reqPtr = do
@@ -643,11 +643,11 @@ reduceScatterBlock = error "reduceScatterBlock is not supported by OpenMPI"
      fromOperation `Operation', fromComm `Comm'} -> `()' checkError*- #}
 
 -- TODO: In the following haddock block, mention SCAN and EXSCAN once
--- they are implemented 
+-- they are implemented
 
 {- | Binds a user-dened reduction operation to an 'Operation' handle that can
 subsequently be used in 'reduce', 'allreduce', and 'reduceScatter'.
-The user-defined operation is assumed to be associative. 
+The user-defined operation is assumed to be associative.
 
 If second argument to @opCreate@ is @True@, then the operation should be both commutative and associative. If
 it is not commutative, then the order of operands is fixed and is defined to be in ascending,
@@ -681,8 +681,8 @@ Full example with user-defined function that mimics standard operation
 @
 import "Control.Parallel.MPI.Fast"
 
-foreign import ccall \"wrapper\" 
-  wrap :: (Ptr CDouble -> Ptr CDouble -> Ptr CInt -> Ptr Datatype -> IO ()) 
+foreign import ccall \"wrapper\"
+  wrap :: (Ptr CDouble -> Ptr CDouble -> Ptr CInt -> Ptr Datatype -> IO ())
           -> IO (FunPtr (Ptr CDouble -> Ptr CDouble -> Ptr CInt -> Ptr Datatype -> IO ()))
 reduceUserOpTest myRank = do
   numProcs <- commSize commWorld
@@ -716,7 +716,7 @@ reduceUserOpTest myRank = do
 -}
 {# fun Op_free as ^ {withOperation* `Operation'} -> `()' checkError*- #}
 
-{- | Returns a 
+{- | Returns a
 floating-point number of seconds, representing elapsed wallclock
 time since some time in the past.
 
@@ -750,7 +750,7 @@ groupSize = unsafePerformIO <$> groupSize_
   where {# fun unsafe Group_size as groupSize_
                         {fromGroup `Group', alloca- `Int' peekIntConv*} -> `()' checkError*- #}
 
--- | Constructs the union of two groups: all the members of the first group, followed by all the members of the 
+-- | Constructs the union of two groups: all the members of the first group, followed by all the members of the
 -- second group that do not appear in the first group. This function corresponds to @MPI_Group_union@.
 groupUnion :: Group -> Group -> Group
 groupUnion g1 g2 = unsafePerformIO $ groupUnion_ g1 g2
@@ -763,7 +763,7 @@ groupIntersection g1 g2 = unsafePerformIO $ groupIntersection_ g1 g2
   where {# fun unsafe Group_intersection as groupIntersection_
                                 {fromGroup `Group', fromGroup `Group', alloca- `Group' peekGroup*} -> `()' checkError*- #}
 
--- | Constructs a new group which contains all the elements of the first group which are not in the second group. 
+-- | Constructs a new group which contains all the elements of the first group which are not in the second group.
 -- This function corresponds to @MPI_Group_difference@.
 groupDifference :: Group -> Group -> Group
 groupDifference g1 g2 = unsafePerformIO $ groupDifference_ g1 g2
@@ -825,14 +825,14 @@ parent intercommunicator is created implicitly inside of 'init' and
 is the same intercommunicator returned by 'commSpawn' in the
 parents. If the process was not spawned, @commGetParent@ returns
 'commNull'. After the parent communicator is freed or disconnected,
-@commGetParent@ returns 'commNull'. -} 
+@commGetParent@ returns 'commNull'. -}
 
 {# fun unsafe Comm_get_parent as ^
                {alloca- `Comm' peekComm*} -> `()' checkError*- #}
 
 withT = with
 {# fun unsafe Comm_spawn as ^
-               { `String' 
+               { `String'
                , withT* `Ptr CChar'
                , id `Count'
                , fromInfo `Info'
@@ -879,7 +879,7 @@ openPort info = do
                , fromComm `Comm'
                , alloca- `Comm' peekComm*} -> `()' checkError*- #}
 
-{-| @commConnect@ creates a connection to the server. The intercommunicator 
+{-| @commConnect@ creates a connection to the server. The intercommunicator
  object returned can be used to communicate with the server. -}
 {# fun unsafe Comm_connect as ^
                { `String'
@@ -942,7 +942,7 @@ abort comm code =
 
 type MPIDatatype = {# type MPI_Datatype #}
 
--- | Haskell datatype used to represent @MPI_Datatype@. 
+-- | Haskell datatype used to represent @MPI_Datatype@.
 -- Please refer to Chapter 4 of MPI Report v. 2.2 for a description
 -- of various datatypes.
 newtype Datatype = MkDatatype { fromDatatype :: MPIDatatype }

@@ -140,7 +140,7 @@ module Control.Parallel.MPI.Base
    , Implementation (..)
    , getImplementation
    , universeSize
-     
+
    -- * Info objects
    ,Info, infoNull, infoCreate, infoSet, infoDelete, infoGet
 
