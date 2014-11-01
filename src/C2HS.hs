@@ -58,7 +58,7 @@ module C2HS (
 
 
 import Foreign
-       hiding       (Word)
+       hiding       (Word, unsafePerformIO)
 		    -- Should also hide the Foreign.Marshal.Pool exports in
 		    -- compilers that export them
 import Foreign.C
