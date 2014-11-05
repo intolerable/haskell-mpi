@@ -103,7 +103,7 @@ flag mpich14
 
 Library
    if flag(mpich14)
-     extra-libraries: mpich, opa, mpl
+     extra-libraries: mpich, opa
    else
      extra-libraries: mpi, open-rte, open-pal
    build-tools:      c2hs
